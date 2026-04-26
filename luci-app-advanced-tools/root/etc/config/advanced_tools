@@ -1,0 +1,19 @@
+config command
+	option name '开启5G最大发射功率'
+	option command 'AT+EFMAXPWR=7,9,1,3,5,8,28,41,77,78,79,232,232,232,232,232,232,232,232,232,1'
+	option description '启用 5G 最大发射功率预设'
+
+config command
+	option name '开启4G最大发射功率'
+	option command 'AT+EFMAXPWR=4,9,1,3,5,8,34,38,39,40,41,232,232,232,232,232,232,232,232,232,1'
+	option description '启用 4G 最大发射功率预设'
+
+config command
+	option name '恢复5G最大发射功率'
+	option command 'AT+EFMAXPWR=7,9,1,3,5,8,28,41,77,78,79,232,232,232,232,232,232,232,232,232,0'
+	option description '恢复 5G 默认发射功率'
+
+config command
+	option name '恢复4G最大发射功率'
+	option command 'AT+EFMAXPWR=4,9,1,3,5,8,34,38,39,40,41,232,232,232,232,232,232,232,232,232,0'
+	option description '恢复 4G 默认发射功率'

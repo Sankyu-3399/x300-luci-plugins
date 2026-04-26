@@ -1,0 +1,77 @@
+<%+header%>
+
+<style type="text/css">
+	.x300new-page {
+		--x300new-border: rgba(159, 149, 132, 0.22);
+		--x300new-card-bg: rgba(255, 251, 244, 0.98);
+		--x300new-card-bg-soft: rgba(250, 244, 234, 0.95);
+		--x300new-text: #3f3529;
+		--x300new-subtle: #766a5d;
+		min-height: calc(100vh - 120px);
+	}
+
+	.x300new-shell {
+		display: grid;
+		gap: 16px;
+	}
+
+	.x300new-panel {
+		padding: 14px;
+		border: 1px solid var(--x300new-border);
+		border-radius: 20px;
+		background: var(--x300new-card-bg);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.85),
+			0 12px 28px rgba(96, 76, 40, 0.08),
+			0 2px 6px rgba(96, 76, 40, 0.04);
+	}
+
+	.x300new-embed-wrap {
+		padding: 10px;
+	}
+
+	.x300new-embed-frame {
+		display: block;
+		width: 100%;
+		min-height: calc(100vh - 210px);
+		border: 1px solid rgba(157, 144, 120, 0.18);
+		border-radius: 18px;
+		background: #fffdf9;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.9),
+			0 8px 24px rgba(96, 76, 40, 0.06);
+	}
+
+	@media (max-width: 760px) {
+		.x300new-panel {
+			padding: 12px;
+		}
+
+		.x300new-embed-wrap {
+			padding: 8px;
+		}
+
+		.x300new-embed-frame {
+			min-height: calc(100vh - 180px);
+			border-radius: 16px;
+		}
+	}
+</style>
+
+<div class="cbi-map x300new-page">
+	<div class="x300new-shell">
+		<%+advanced_tools/platform_temperature%>
+
+		<div class="x300new-panel x300new-embed-wrap">
+			<iframe
+				class="x300new-embed-frame"
+				src="https://net.arsn.cn"
+				title="net.arsn.cn"
+				loading="eager"
+				referrerpolicy="strict-origin-when-cross-origin">
+			</iframe>
+		</div>
+	</div>
+</div>
+
+<%+footer%>

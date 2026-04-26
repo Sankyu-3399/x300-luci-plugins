@@ -1,0 +1,159 @@
+<%+header%>
+<%
+	local jsonc = require "luci.jsonc"
+	local asset_stamp = tostring(os.time())
+	local initial = {
+		data_url = data_url,
+		apply_url = apply_url,
+		cfun_url = cfun_url,
+		save_imei_url = save_imei_url,
+		apply_imei_url = apply_imei_url,
+		delete_imei_url = delete_imei_url,
+		resource_base = resource .. "/modem-dashboard"
+	}
+%>
+
+<link rel="stylesheet" type="text/css" href="<%=resource%>/modem-dashboard/dashboard.css?v=<%=asset_stamp%>" />
+
+<div class="cbi-map modemdash-page">
+	<div class="modemdash-shell">
+		<div class="modemdash-header">
+			<div class="modemdash-header-actions">
+				<div class="modemdash-refresh-group">
+					<div id="modemdash-refresh" class="modemdash-refresh">每 5 秒自动刷新</div>
+					<button id="modemdash-refresh-now" class="cbi-button modemdash-refresh-button" type="button" aria-label="立即刷新" title="立即刷新">
+						<img id="modemdash-refresh-icon" alt="" />
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="modemdash-top-area">
+			<div id="modemdash-notice" class="modemdash-notice" style="display:none;"></div>
+			<div id="modemdash-summary" class="modemdash-summary-strip"></div>
+		</div>
+
+		<div id="modemdash-status-row" class="modemdash-row-grid modemdash-status-row">
+			<div id="modemdash-connection-card" class="modemdash-card modemdash-connection-card">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>基带信息</h3>
+					</div>
+					<button id="modemdash-sensitive-toggle" class="cbi-button modemdash-toggle" type="button" aria-label="隐藏敏感信息" title="隐藏敏感信息">
+						<img id="modemdash-sensitive-icon" alt="" />
+					</button>
+				</div>
+				<div id="modemdash-connection-kv" class="modemdash-kv-group"></div>
+				<div class="modemdash-card-toolbar modemdash-card-toolbar-bottom">
+					<div class="modemdash-action-group" role="group" aria-label="飞行模式控制">
+						<button id="modemdash-enable-flight" class="cbi-button modemdash-action-button modemdash-action-button-flight" type="button">开启飞行模式</button>
+						<button id="modemdash-disable-flight" class="cbi-button modemdash-action-button modemdash-action-button-normal" type="button">关闭飞行模式</button>
+					</div>
+				</div>
+			</div>
+
+			<div id="modemdash-signal-card" class="modemdash-card modemdash-signal-card">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>信号质量</h3>
+					</div>
+					<div class="modemdash-card-note modemdash-legend">
+						<span class="modemdash-legend-item"><span class="modemdash-freshness-dot live"></span><span>实时状态</span></span>
+						<span class="modemdash-legend-item"><span class="modemdash-freshness-dot cache"></span><span>最后一次上报数据</span></span>
+					</div>
+				</div>
+				<div id="modemdash-signal-shell" class="modemdash-signal-shell">
+					<div id="modemdash-signal" class="modemdash-signal-list"></div>
+					<div id="modemdash-signal-diagnosis-panel" class="modemdash-signal-diagnosis">
+						<p class="modemdash-signal-diagnosis-title">快速诊断</p>
+						<div id="modemdash-signal-diagnosis" class="modemdash-diagnosis-list"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="modemdash-carrier-row" class="modemdash-row-grid modemdash-carrier-row">
+			<div id="modemdash-carrier-card" class="modemdash-card">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>主载波详情</h3>
+					</div>
+					<div class="modemdash-card-note modemdash-legend">
+						<span class="modemdash-legend-item"><span class="modemdash-freshness-dot live"></span><span>实时状态</span></span>
+						<span class="modemdash-legend-item"><span class="modemdash-freshness-dot cache"></span><span>最后一次上报数据</span></span>
+					</div>
+				</div>
+				<dl id="modemdash-carrier" class="modemdash-definition-grid"></dl>
+			</div>
+
+			<div id="modemdash-ca-card" class="modemdash-card modemdash-card-soft modemdash-ca-card" style="display:none;">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>NR CA 配置</h3>
+					</div>
+				</div>
+				<div class="modemdash-card-body">
+					<div class="modemdash-ca-panel modemdash-ca-panel-current">
+						<h4>当前配置</h4>
+						<p>当前已生效的上下行载波聚合上限。</p>
+						<div id="modemdash-ca-current" class="modemdash-mini-grid modemdash-mini-grid-two"></div>
+					</div>
+					<div class="modemdash-ca-panel modemdash-ca-panel-config">
+						<h4>修改配置</h4>
+						<div class="modemdash-ca-editor">
+							<div class="modemdash-ca-input-grid">
+								<div class="modemdash-field">
+									<label class="modemdash-label" for="modemdash-dl-ccs">下行 CA 上限</label>
+									<input id="modemdash-dl-ccs" class="cbi-input-text modemdash-input" type="text" inputmode="numeric" placeholder="例如：4" />
+								</div>
+								<div class="modemdash-field">
+									<label class="modemdash-label" for="modemdash-ul-ccs">上行 CA 上限</label>
+									<input id="modemdash-ul-ccs" class="cbi-input-text modemdash-input" type="text" inputmode="numeric" placeholder="例如：2" />
+								</div>
+							</div>
+							<button id="modemdash-apply" class="cbi-button cbi-button-action important modemdash-ca-apply" type="button">保存并应用</button>
+							<div id="modemdash-ca-message" class="modemdash-message"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="modemdash-secondary-section" class="modemdash-section-stack modemdash-secondary-section">
+			<div id="modemdash-cells-card" class="modemdash-card">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>小区与邻区</h3>
+					</div>
+				</div>
+				<div class="modemdash-cells-shell">
+					<div id="modemdash-current-cell-section">
+						<div id="modemdash-current-cell"></div>
+					</div>
+					<div id="modemdash-neighbor-section">
+						<h4>邻区</h4>
+						<div id="modemdash-neighbor-list" class="modemdash-neighbor-list"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="modemdash-hardware-section" class="modemdash-section-stack modemdash-hardware-section">
+			<div id="modemdash-temperature-card" class="modemdash-card">
+				<div class="modemdash-card-head">
+					<div>
+						<h3>平台温度</h3>
+					</div>
+				</div>
+				<div id="modemdash-platform-temperature" class="modemdash-temperature-strip"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+	window.ModemDashboardConfig = <%= jsonc.stringify(initial) %>;
+</script>
+<script type="text/javascript" src="<%=resource%>/modem-dashboard/dashboard.js?v=<%=asset_stamp%>"></script>
+
+<%+footer%>

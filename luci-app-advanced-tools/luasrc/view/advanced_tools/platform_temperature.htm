@@ -1,0 +1,346 @@
+<style type="text/css">
+	.x300new-temperature-panel {
+		margin-bottom: 18px;
+		padding: 16px;
+		border-radius: 20px;
+		border: 1px solid rgba(159, 149, 132, 0.22);
+		background:
+			linear-gradient(180deg, rgba(255, 251, 244, 0.98) 0%, rgba(249, 243, 232, 0.95) 100%);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.8),
+			0 12px 28px rgba(96, 76, 40, 0.08),
+			0 2px 6px rgba(96, 76, 40, 0.04);
+	}
+
+	.x300new-temperature-strip {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.x300new-temperature-item {
+		--x300new-chip-bg: rgba(255, 248, 239, 0.96);
+		--x300new-chip-edge: rgba(161, 149, 129, 0.22);
+		--x300new-chip-shadow: rgba(92, 74, 44, 0.08);
+		display: inline-flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		flex: 1 1 210px;
+		min-width: min(210px, 100%);
+		padding: 11px 13px;
+		border: 1px solid var(--x300new-chip-edge);
+		border-radius: 15px;
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.16) 100%),
+			linear-gradient(180deg, var(--x300new-chip-bg) 0%, color-mix(in srgb, var(--x300new-chip-bg) 88%, #f5ead7) 100%);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.82),
+			0 5px 14px var(--x300new-chip-shadow);
+		transition:
+			background 240ms ease,
+			border-color 240ms ease,
+			box-shadow 240ms ease,
+			transform 180ms ease;
+	}
+
+	.x300new-temperature-item:hover {
+		transform: translateY(-1px);
+	}
+
+	.x300new-temperature-name {
+		min-width: 0;
+		font-size: 12px;
+		font-weight: 800;
+		line-height: 1.15;
+		color: #6d6254;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		letter-spacing: 0.01em;
+	}
+
+	.x300new-temperature-reading {
+		flex: 0 0 auto;
+		position: relative;
+		height: 1.25em;
+		min-width: 64px;
+		overflow: hidden;
+	}
+
+	.x300new-temperature-value {
+		position: absolute;
+		top: 0;
+		right: 0;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		width: 100%;
+		font-size: 17px;
+		font-weight: 800;
+		line-height: 1.25;
+		color: #403529;
+		white-space: nowrap;
+		transform: translateY(0);
+		opacity: 1;
+		transition: transform 240ms cubic-bezier(.22,.9,.3,1), opacity 240ms ease;
+	}
+
+	@media (max-width: 760px) {
+		.x300new-temperature-panel {
+			padding: 14px;
+		}
+
+		.x300new-temperature-strip {
+			gap: 6px;
+		}
+
+		.x300new-temperature-item {
+			flex-basis: 188px;
+			min-width: min(188px, 100%);
+			padding: 10px 11px;
+		}
+
+		.x300new-temperature-value {
+			font-size: 15px;
+		}
+	}
+</style>
+
+<div id="x300new-temperature-panel" class="x300new-panel x300new-temperature-panel" style="display:none;">
+	<div id="x300new-temperature-strip" class="x300new-temperature-strip"></div>
+</div>
+
+<script type="text/javascript">
+	(function() {
+		var panelNode = document.getElementById('x300new-temperature-panel');
+		var stripNode = document.getElementById('x300new-temperature-strip');
+		var url = '<%= temp_url %>';
+		var timer = null;
+		var cardMap = {};
+
+		function hasValue(value) {
+			return value != null && String(value).trim() !== '';
+		}
+
+		function parseTemperature(value) {
+			var numeric = parseFloat(String(value || '').replace('°C', ''));
+			return isNaN(numeric) ? null : numeric;
+		}
+
+		function temperatureClass(value) {
+			var numeric = parseTemperature(value);
+
+			if (numeric == null || numeric < 60)
+				return 'good';
+			if (numeric < 70)
+				return 'warn';
+			return 'bad';
+		}
+
+		function mixColor(from, to, amount) {
+			return from.map(function(channel, index) {
+				return Math.round(channel + (to[index] - channel) * amount);
+			});
+		}
+
+		function rgbString(color, alpha) {
+			return 'rgba(' + color[0] + ', ' + color[1] + ', ' + color[2] + ', ' + alpha + ')';
+		}
+
+		function clamp(value, min, max) {
+			return Math.min(max, Math.max(min, value));
+		}
+
+		function temperatureTone(value) {
+			var numeric = parseTemperature(value);
+			var stops = [
+				{ at: 35, color: [247, 242, 231] },
+				{ at: 60, color: [224, 243, 221] },
+				{ at: 70, color: [247, 229, 205] },
+				{ at: 75, color: [248, 214, 210] },
+				{ at: 85, color: [242, 197, 193] }
+			];
+			var index;
+			var ratio;
+			var base;
+			var edge;
+			var shadow;
+
+			if (numeric == null) {
+				base = stops[0].color;
+			} else if (numeric <= stops[0].at) {
+				base = stops[0].color;
+			} else if (numeric >= stops[stops.length - 1].at) {
+				base = stops[stops.length - 1].color;
+			} else {
+				for (index = 0; index < stops.length - 1; index++) {
+					if (numeric <= stops[index + 1].at) {
+						ratio = (numeric - stops[index].at) / (stops[index + 1].at - stops[index].at);
+						base = mixColor(stops[index].color, stops[index + 1].color, clamp(ratio, 0, 1));
+						break;
+					}
+				}
+			}
+
+			edge = mixColor(base, [138, 117, 89], 0.24);
+			shadow = mixColor(base, [103, 82, 53], 0.45);
+
+			return {
+				background: rgbString(base, 0.94),
+				edge: rgbString(edge, 0.28),
+				shadow: rgbString(shadow, 0.12)
+			};
+		}
+
+		function createValueNode(text) {
+			var value = document.createElement('span');
+
+			value.className = 'x300new-temperature-value';
+			value.textContent = text;
+			return value;
+		}
+
+		function createCard(item) {
+			var tone = temperatureTone(item.value);
+			var node = document.createElement('div');
+			var name = document.createElement('span');
+			var reading = document.createElement('span');
+			var current = createValueNode(item.value);
+
+			node.className = 'x300new-temperature-item ' + temperatureClass(item.value);
+			node.dataset.key = item.key;
+			node.style.setProperty('--x300new-chip-bg', tone.background);
+			node.style.setProperty('--x300new-chip-edge', tone.edge);
+			node.style.setProperty('--x300new-chip-shadow', tone.shadow);
+
+			name.className = 'x300new-temperature-name';
+			name.textContent = item.label;
+			name.title = item.label;
+
+			reading.className = 'x300new-temperature-reading';
+			reading.appendChild(current);
+
+			node.appendChild(name);
+			node.appendChild(reading);
+			node._numeric = parseTemperature(item.value);
+			node._valueText = item.value;
+			node._readingNode = reading;
+
+			return node;
+		}
+
+		function animateValue(node, nextText) {
+			var nextNumeric = parseTemperature(nextText);
+			var currentNumeric = node._numeric;
+			var direction = 0;
+			var currentValue = node._readingNode.querySelector('.x300new-temperature-value');
+			var nextValue;
+
+			if (currentNumeric != null && nextNumeric != null) {
+				direction = nextNumeric > currentNumeric ? 1 : (nextNumeric < currentNumeric ? -1 : 0);
+			}
+
+			if (!currentValue || direction === 0 || node._valueText === nextText) {
+				if (currentValue)
+					currentValue.textContent = nextText;
+				node._numeric = nextNumeric;
+				node._valueText = nextText;
+				return;
+			}
+
+			nextValue = createValueNode(nextText);
+			nextValue.style.transform = 'translateY(' + (direction > 0 ? '-110%' : '110%') + ')';
+			nextValue.style.opacity = '0';
+			node._readingNode.appendChild(nextValue);
+
+			window.requestAnimationFrame(function() {
+				currentValue.style.transform = 'translateY(' + (direction > 0 ? '110%' : '-110%') + ')';
+				currentValue.style.opacity = '0';
+				nextValue.style.transform = 'translateY(0)';
+				nextValue.style.opacity = '1';
+			});
+
+			window.setTimeout(function() {
+				if (currentValue.parentNode === node._readingNode)
+					node._readingNode.removeChild(currentValue);
+				node._numeric = nextNumeric;
+				node._valueText = nextText;
+			}, 260);
+		}
+
+		function updateCard(node, item) {
+			var tone = temperatureTone(item.value);
+
+			node.className = 'x300new-temperature-item ' + temperatureClass(item.value);
+			node.style.setProperty('--x300new-chip-bg', tone.background);
+			node.style.setProperty('--x300new-chip-edge', tone.edge);
+			node.style.setProperty('--x300new-chip-shadow', tone.shadow);
+			animateValue(node, item.value);
+		}
+
+		function renderTemperature(data) {
+			var items = [
+				{ key: 'cpu', label: 'CPU', value: data.cpu },
+				{ key: 'connsys', label: '连接组合芯片', value: data.connsys },
+				{ key: 'dsp', label: '数字信号处理传感器', value: data.dsp },
+				{ key: 'nr_pa', label: '5G PA', value: data.nr_pa },
+				{ key: 'lte_pa', label: '4G PA', value: data.lte_pa },
+				{ key: 'rf', label: 'RF', value: data.rf },
+				{ key: 'pmic', label: '电源管理芯片', value: data.pmic }
+			].filter(function(item) {
+				return hasValue(item.value);
+			});
+			var seen = {};
+			var node;
+
+			if (!items.length) {
+				panelNode.style.display = 'none';
+				return;
+			}
+
+			items.forEach(function(item) {
+				seen[item.key] = true;
+				node = cardMap[item.key];
+
+				if (!node) {
+					node = createCard(item);
+					cardMap[item.key] = node;
+				} else {
+					updateCard(node, item);
+				}
+
+				stripNode.appendChild(node);
+			});
+
+			Object.keys(cardMap).forEach(function(key) {
+				if (!seen[key]) {
+					if (cardMap[key].parentNode === stripNode)
+						stripNode.removeChild(cardMap[key]);
+					delete cardMap[key];
+				}
+			});
+
+			panelNode.style.display = '';
+		}
+
+		function loadTemperature() {
+			return fetch(url, { credentials: 'same-origin' })
+				.then(function(res) { return res.json(); })
+				.then(function(res) {
+					renderTemperature(res.platform_temperature || {});
+				})
+				.catch(function() {
+					panelNode.style.display = 'none';
+				});
+		}
+
+		loadTemperature();
+		timer = window.setInterval(loadTemperature, 5000);
+
+		window.addEventListener('beforeunload', function() {
+			if (timer)
+				window.clearInterval(timer);
+		});
+	})();
+</script>

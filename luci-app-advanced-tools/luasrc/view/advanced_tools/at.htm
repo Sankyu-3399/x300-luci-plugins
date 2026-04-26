@@ -1,0 +1,517 @@
+<%+header%>
+<%
+	local jsonc = require "luci.jsonc"
+	local initial = {
+		available = binary ~= nil,
+		binary = binary or "-",
+		commands = commands or {}
+	}
+%>
+
+<style type="text/css">
+	.x300new-page {
+		--x300new-accent: var(--primary-color-medium, #0f766e);
+		--x300new-accent-soft: color-mix(in srgb, var(--x300new-accent) 12%, var(--background-color-high, #fff));
+		--x300new-border: var(--border-color-medium, #d9e3ea);
+		--x300new-card-bg: var(--background-color-high, #fff);
+		--x300new-card-bg-soft: var(--background-color-medium, #f8fafc);
+		--x300new-card-bg-alt: var(--background-color-low, #fbfcfd);
+		--x300new-text: var(--text-color-high, #0f172a);
+		--x300new-subtle: var(--text-color-medium, #4b5563);
+		--x300new-console-bg: color-mix(in srgb, var(--x300new-text) 86%, #020617);
+		--x300new-console-fg: color-mix(in srgb, var(--x300new-card-bg) 90%, #d9f99d);
+		--x300new-soft: var(--x300new-card-bg-soft);
+	}
+
+	.x300new-panel {
+		border: 1px solid var(--x300new-border);
+		border-radius: 18px;
+		background: var(--x300new-card-bg);
+		box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+	}
+
+	.x300new-status {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 14px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		background: var(--x300new-accent-soft);
+		color: var(--x300new-accent);
+		font-weight: 600;
+	}
+
+	.x300new-status-wrap {
+		margin: 0 0 14px 0;
+	}
+
+	.x300new-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+		gap: 18px;
+	}
+
+	.x300new-panel {
+		padding: 18px;
+	}
+
+	.x300new-panel h3 {
+		margin: 0 0 10px 0;
+		font-size: 20px;
+	}
+
+	.x300new-panel p {
+		margin: 0 0 14px 0;
+		color: var(--x300new-subtle);
+	}
+
+	.x300new-form-fields {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 14px;
+		margin-top: 14px;
+	}
+
+	.x300new-field {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-width: 0;
+	}
+
+	.x300new-label {
+		font-size: 13px;
+		font-weight: 700;
+		color: #334155;
+	}
+
+	.x300new-input,
+	.x300new-textarea {
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+	}
+
+	.x300new-input {
+		text-align: center;
+	}
+
+	.x300new-input::placeholder {
+		text-align: center;
+	}
+
+	.x300new-textarea {
+		min-height: 100px;
+		font-family: monospace;
+		font-size: 14px;
+	}
+
+	.x300new-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin-top: 16px;
+	}
+
+	.x300new-console {
+		margin: 0;
+		padding: 16px;
+		border-radius: 14px;
+		background: var(--x300new-console-bg);
+		color: var(--x300new-console-fg);
+		min-height: 380px;
+		max-height: 680px;
+		overflow: auto;
+		white-space: pre-wrap;
+		word-break: break-word;
+		font-family: "SFMono-Regular", Consolas, monospace;
+		line-height: 1.65;
+	}
+
+	.x300new-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+		gap: 12px;
+		margin-top: 18px;
+	}
+
+	.x300new-card {
+		padding: 14px;
+		border: 1px solid var(--x300new-border);
+		border-radius: 14px;
+		background: linear-gradient(180deg, var(--x300new-card-bg) 0%, var(--x300new-card-bg-alt) 100%);
+	}
+
+	.x300new-card-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 10px;
+		align-items: center;
+	}
+
+	.x300new-card-title {
+		font-size: 16px;
+		font-weight: 800;
+		color: var(--x300new-text);
+		text-align: center;
+		width: 100%;
+	}
+
+	.x300new-card-desc {
+		margin-top: 10px;
+		color: var(--x300new-subtle);
+		text-align: center;
+	}
+
+	.x300new-card-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		justify-content: center;
+		width: 100%;
+	}
+
+	.x300new-card-actions .btn,
+	.x300new-card-actions .cbi-button,
+	.x300new-actions .btn,
+	.x300new-actions .cbi-button {
+		margin: 0;
+	}
+
+	.x300new-empty {
+		padding: 24px;
+		border: 1px dashed var(--x300new-border);
+		border-radius: 14px;
+		text-align: center;
+		color: var(--x300new-subtle);
+		background: var(--x300new-card-bg-soft);
+	}
+
+	@media (max-width: 1100px) {
+		.x300new-layout {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 760px) {
+		.x300new-panel {
+			padding: 16px;
+		}
+
+		.x300new-actions,
+		.x300new-card-actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.x300new-card-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.x300new-actions .btn,
+		.x300new-actions .cbi-button,
+		.x300new-card-actions .btn,
+		.x300new-card-actions .cbi-button {
+			width: 100%;
+		}
+	}
+
+	@media (min-width: 980px) {
+		.x300new-form-fields {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+</style>
+
+<div class="cbi-map x300new-page">
+	<div class="x300new-layout">
+		<div class="x300new-panel">
+			<h3>AT 指令执行</h3>
+			<p>输入纯 AT 指令即可，例如 <code>AT+GMR</code>。如果你直接贴入完整前缀，页面也会自动规整。</p>
+			<div class="x300new-status-wrap">
+				<div class="x300new-status" id="x300new-status"></div>
+			</div>
+			<textarea id="x300new-command" class="cbi-input-textarea x300new-textarea" rows="3" placeholder="例如：AT+GMR"></textarea>
+			<div class="x300new-form-fields">
+				<div class="x300new-field">
+					<label class="x300new-label" for="x300new-name">保存名称</label>
+					<input id="x300new-name" class="cbi-input-text x300new-input" type="text" placeholder="常用指令名称，例如：查询当前IMEI" />
+				</div>
+				<div class="x300new-field">
+					<label class="x300new-label" for="x300new-description">保存说明</label>
+					<input id="x300new-description" class="cbi-input-text x300new-input" type="text" placeholder="说明，例如：读取当前模组 IMEI" />
+				</div>
+			</div>
+			<div class="x300new-actions">
+				<button id="x300new-run" class="cbi-button cbi-button-action important">执行 AT 指令</button>
+				<button id="x300new-save" class="btn">保存为常用指令</button>
+			</div>
+		</div>
+
+		<div class="x300new-panel">
+			<h3>执行结果</h3>
+			<p>这里显示完整命令前缀、标准输出和退出码。</p>
+			<pre id="x300new-console" class="x300new-console"># mipc_wan_cli --at_cmd AT+GMR
+
+准备就绪，等待执行...</pre>
+		</div>
+	</div>
+
+	<div class="x300new-panel" style="margin-top:18px;">
+		<h3>常用 AT 指令</h3>
+		<p>点击“执行”可直接下发命令，点击“载入”可先带回编辑区修改后再执行。</p>
+		<div id="x300new-cards" class="x300new-card-grid"></div>
+	</div>
+</div>
+
+<script type="text/javascript">
+	(function() {
+		var state = <%= jsonc.stringify(initial) %>;
+		var urls = {
+			list: '<%= list_url %>',
+			run: '<%= run_url %>',
+			save: '<%= save_url %>',
+			delete: '<%= delete_url %>'
+		};
+
+		var commandInput = document.getElementById('x300new-command');
+		var nameInput = document.getElementById('x300new-name');
+		var descriptionInput = document.getElementById('x300new-description');
+		var runButton = document.getElementById('x300new-run');
+		var saveButton = document.getElementById('x300new-save');
+		var consoleNode = document.getElementById('x300new-console');
+		var cardsNode = document.getElementById('x300new-cards');
+		var statusNode = document.getElementById('x300new-status');
+
+		function normalizeCommand(command) {
+			command = String(command || '')
+				.replace(/\u3000/g, ' ')
+				.replace(/[\uFF01-\uFF5E]/g, function(ch) {
+					return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+				})
+				.replace(/[“”]/g, '"')
+				.replace(/[‘’]/g, "'")
+				.replace(/[【]/g, '[')
+				.replace(/[】]/g, ']')
+				.replace(/[《]/g, '<')
+				.replace(/[》]/g, '>')
+				.replace(/。/g, '.')
+				.replace(/[、，]/g, ',')
+				.replace(/：/g, ':')
+				.replace(/；/g, ';')
+				.replace(/\r?\n/g, ' ')
+				.replace(/\s+/g, ' ')
+				.trim()
+				.replace(/^mipc_wan_cli\s+--at_cmd\s+/i, '');
+
+			command = command.replace(/^at/i, 'AT');
+
+			if (command.charAt(0) === '+')
+				command = 'AT' + command;
+
+			return command;
+		}
+
+		function fullCommand(command) {
+			return 'mipc_wan_cli --at_cmd ' + normalizeCommand(command);
+		}
+
+		function encodeForm(data) {
+			var pairs = [];
+			Object.keys(data).forEach(function(key) {
+				pairs.push(encodeURIComponent(key) + '=' + encodeURIComponent(data[key] == null ? '' : data[key]));
+			});
+			return pairs.join('&');
+		}
+
+		function setBusy(busy) {
+			runButton.disabled = busy;
+			saveButton.disabled = busy;
+			commandInput.disabled = busy;
+			nameInput.disabled = busy;
+			descriptionInput.disabled = busy;
+		}
+
+		function setConsole(command, output, exitCode) {
+			var lines = ['# ' + fullCommand(command), ''];
+
+			if (output && output.replace(/\s+$/, ''))
+				lines.push(output.replace(/\s+$/, ''));
+
+			if (typeof exitCode !== 'undefined' && exitCode !== null) {
+				if (lines[lines.length - 1] !== '')
+					lines.push('');
+				lines.push('[exit code] ' + exitCode);
+			}
+
+			consoleNode.textContent = lines.join('\n');
+		}
+
+		function updateStatus() {
+			statusNode.textContent = (state.available ? '后端命令可用' : '后端命令不可用') + ' · ' + (state.binary || '-');
+		}
+
+		function showMessage(message) {
+			window.alert(message);
+		}
+
+		function renderCards() {
+			cardsNode.innerHTML = '';
+
+			if (!state.commands || !state.commands.length) {
+				var empty = document.createElement('div');
+				empty.className = 'x300new-empty';
+				empty.innerHTML = '<strong>还没有常用指令</strong><div>在上方输入 AT 命令后，可以连同说明一起保存到这里。</div>';
+				cardsNode.appendChild(empty);
+				return;
+			}
+
+			state.commands.forEach(function(entry) {
+				var card = document.createElement('div');
+				card.className = 'x300new-card';
+				card.innerHTML =
+					'<div class="x300new-card-head">' +
+						'<div class="x300new-card-title"></div>' +
+						'<div class="x300new-card-actions">' +
+							'<button class="cbi-button cbi-button-action important" data-action="run">执行</button>' +
+							'<button class="btn" data-action="load">载入</button>' +
+							'<button class="btn cbi-button-negative" data-action="delete">删除</button>' +
+						'</div>' +
+					'</div>' +
+					'<div class="x300new-card-desc"></div>';
+
+				card.querySelector('.x300new-card-title').textContent = entry.name || entry.command;
+				card.querySelector('.x300new-card-desc').textContent = entry.description || '无说明';
+
+				card.querySelector('[data-action="run"]').addEventListener('click', function() {
+					executeCommand(entry.command);
+				});
+
+				card.querySelector('[data-action="load"]').addEventListener('click', function() {
+					commandInput.value = entry.command;
+					nameInput.value = entry.name || '';
+					descriptionInput.value = entry.description || '';
+				});
+
+				card.querySelector('[data-action="delete"]').addEventListener('click', function() {
+					deleteCommand(entry);
+				});
+
+				cardsNode.appendChild(card);
+			});
+		}
+
+		function request(url, data) {
+			return fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+				credentials: 'same-origin',
+				body: encodeForm(data || {})
+			}).then(function(res) { return res.json(); });
+		}
+
+		function refreshCommands() {
+			return fetch(urls.list, { credentials: 'same-origin' })
+				.then(function(res) { return res.json(); })
+				.then(function(res) {
+					state.available = !!res.available;
+					state.commands = res.commands || [];
+					renderCards();
+					updateStatus();
+				});
+		}
+
+		function executeCommand(command) {
+			var normalized = normalizeCommand(command || commandInput.value);
+			if (!normalized) {
+				showMessage('请输入 AT 指令');
+				return;
+			}
+			if (!state.available) {
+				showMessage('系统中未找到 mipc_wan_cli，无法执行 AT 指令');
+				return;
+			}
+
+			commandInput.value = normalized;
+			setBusy(true);
+			consoleNode.textContent = '# ' + fullCommand(normalized) + '\n\n执行中...';
+
+			request(urls.run, { command: normalized }).then(function(res) {
+				if (!res.ok && res.error) {
+					setConsole(normalized, res.error, res.exit_code);
+					showMessage(res.error);
+					return;
+				}
+				setConsole(normalized, res.output || '', res.exit_code);
+			}).catch(function(err) {
+				setConsole(normalized, String(err), -1);
+				showMessage(String(err));
+			}).finally(function() {
+				setBusy(false);
+			});
+		}
+
+		function saveCommand() {
+			var payload = {
+				name: nameInput.value.trim(),
+				command: normalizeCommand(commandInput.value),
+				description: descriptionInput.value.trim()
+			};
+			if (!payload.command) {
+				showMessage('请输入要保存的 AT 指令');
+				return;
+			}
+
+			setBusy(true);
+
+			request(urls.save, payload).then(function(res) {
+				if (!res.ok && res.error) {
+					showMessage(res.error);
+					return;
+				}
+
+				nameInput.value = '';
+				descriptionInput.value = '';
+
+				return refreshCommands().then(function() {
+					showMessage('常用 AT 指令已保存');
+				});
+			}).catch(function(err) {
+				showMessage(String(err));
+			}).finally(function() {
+				setBusy(false);
+			});
+		}
+
+		function deleteCommand(entry) {
+			if (!window.confirm('将删除常用指令：' + (entry.name || entry.command))) {
+				return;
+			}
+
+			setBusy(true);
+
+			request(urls.delete, { id: entry.id }).then(function(res) {
+				if (!res.ok && res.error) {
+					showMessage(res.error);
+					return;
+				}
+				return refreshCommands();
+			}).catch(function(err) {
+				showMessage(String(err));
+			}).finally(function() {
+				setBusy(false);
+			});
+		}
+
+		runButton.addEventListener('click', function() { executeCommand(); });
+		saveButton.addEventListener('click', function() { saveCommand(); });
+
+		updateStatus();
+		renderCards();
+	})();
+</script>
+
+<%+footer%>
